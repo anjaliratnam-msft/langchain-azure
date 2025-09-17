@@ -4,7 +4,7 @@ import azure.identity
 import azure.identity.aio
 import azure.core.credentials
 import azure.core.credentials_async
-from typing import Optional, Union, Callable, Iterator, AsyncIterator
+from typing import Optional, Union, Callable, Iterator, AsyncIterator, Iterable
 from azure.storage.blob import BlobClient, ContainerClient
 from langchain_core.document_loaders import BaseLoader, BaseBlobParser
 from langchain_core.documents.base import Document, Blob
@@ -111,63 +111,12 @@ def _get_sdk_credential(credential: SDK_CREDENTIAL_TYPE) -> SDK_CREDENTIAL_TYPE:
         return credential
     raise TypeError("Invalid credential type provided.")
 
-
-class AzureBlobStorageFileLoader(BaseLoader):
+class AzureBlobStorageLoader(BaseLoader):
     def __init__(
             self, 
             account_url: str,
             container_name: str,
-            blob_name: str,
-            credential: Optional[
-                Union[
-                    azure.core.credentials.AzureSasCredential,
-                    azure.core.credentials.TokenCredential,
-                    azure.core.credentials_async.AsyncTokenCredential,
-                ]
-            ] = None,
-            loader_factory: Optional[Callable[str, BaseLoader]] = None,
-    ):
-        self._account_url = account_url
-        self._container_name = container_name
-        self._blob_name = blob_name
-        self._credential = credential
-        self._loader_factory = loader_factory
-
-    def lazy_load(self) -> Iterator[Document]:
-        self._credential = _get_sdk_credential(self._credential)
-        if isinstance(self._credential, azure.core.credentials_async.AsyncTokenCredential):
-            raise ValueError("Async credential provided to sync method.")
-        blob_url = f"{self._account_url}/{self._container_name}/{self._blob_name}"   
-        blob_client = BlobClient.from_blob_url(
-            blob_url, **_get_client_kwargs(self._credential["sync"] if isinstance(self._credential, dict) else self._credential)
-        )
-        if self._loader_factory:
-            yield from _lazy_load_from_custom_loader(blob_client, self._loader_factory)
-        else:
-            yield from _lazy_load_documents_from_blob(blob_client, self._loader_factory)
-
-    async def alazy_load(self) -> AsyncIterator[Document]:
-        self._credential = _get_sdk_credential(self._credential)
-        if isinstance(self._credential, (azure.core.credentials.TokenCredential, azure.core.credentials.AzureSasCredential)):
-            raise ValueError("Sync credential provided to async method.")
-        blob_url = f"{self._account_url}/{self._container_name}/{self._blob_name}"
-        async with AsyncBlobClient.from_blob_url(
-            blob_url, **_get_client_kwargs(self._credential["async"] if isinstance(self._credential, dict) else self._credential)
-        ) as blob_client:
-            if self._loader_factory:
-                async for doc in _alazy_load_from_custom_loader(blob_client, self._loader_factory):
-                    yield doc
-            else:
-                async for doc in _alazy_load_documents_from_blob(blob_client, self._loader_factory):
-                    yield doc
-            await self._credential["async"].close()
-        
-
-class AzureBlobStorageContainerLoader(BaseLoader):
-    def __init__(
-            self, 
-            account_url: str,
-            container_name: str,
+            blob_names: Optional[Union[str, Iterable[str]]] = None,
             prefix: str = "",
             credential: Optional[
                 Union[
@@ -180,6 +129,7 @@ class AzureBlobStorageContainerLoader(BaseLoader):
     ):
         self._account_url = account_url
         self._container_name = container_name
+        self._blob_names = blob_names
         self._prefix = prefix
         self._credential = credential
         self._loader_factory = loader_factory
@@ -192,13 +142,14 @@ class AzureBlobStorageContainerLoader(BaseLoader):
         container_client = ContainerClient.from_container_url(
             container_url, **_get_client_kwargs(self._credential["sync"] if isinstance(self._credential, dict) else self._credential)
         )
-        blobs = container_client.list_blob_names(name_starts_with=self._prefix)
-        for blob_name in blobs:
-            blob_client = container_client.get_blob_client(blob_name)
-            if self._loader_factory:
-                yield from _lazy_load_from_custom_loader(blob_client, self._loader_factory)
-            else:
-                yield from _lazy_load_documents_from_blob(blob_client, self._loader_factory)
+        blobs_with_prefix = list(container_client.list_blob_names(name_starts_with=self._prefix))
+        for blob_name in self._blob_names:
+            if blob_name in blobs_with_prefix:
+                blob_client = container_client.get_blob_client(blob_name)
+                if self._loader_factory:
+                    yield from _lazy_load_from_custom_loader(blob_client, self._loader_factory)
+                else:
+                    yield from _lazy_load_documents_from_blob(blob_client, self._loader_factory)
 
     async def alazy_load(self) -> AsyncIterator[Document]:
         self._credential = _get_sdk_credential(self._credential)
@@ -208,13 +159,17 @@ class AzureBlobStorageContainerLoader(BaseLoader):
         async with AsyncContainerClient.from_container_url(
             container_url, **_get_client_kwargs(self._credential["async"] if isinstance(self._credential, dict) else self._credential)
         ) as container_client:
-            blobs = container_client.list_blob_names(name_starts_with=self._prefix)
-            async for blob_name in blobs:
-                blob_client = container_client.get_blob_client(blob_name)
-                if self._loader_factory:
-                    async for doc in _alazy_load_from_custom_loader(blob_client, self._loader_factory):
-                        yield doc
-                else: 
-                    async for doc in _alazy_load_documents_from_blob(blob_client, self._loader_factory):
-                        yield doc
-            await self._credential["async"].close()
+            blobs_with_prefix = []
+            async for blob_name in container_client.list_blob_names(name_starts_with=self._prefix):
+                blobs_with_prefix.append(blob_name)
+            for blob_name in self._blob_names:
+                if blob_name in blobs_with_prefix:
+                    blob_client = container_client.get_blob_client(blob_name)
+                    if self._loader_factory:
+                        async for doc in _alazy_load_from_custom_loader(blob_client, self._loader_factory):
+                            yield doc
+                    else: 
+                        async for doc in _alazy_load_documents_from_blob(blob_client, self._loader_factory):
+                            yield doc
+            if self._credential and isinstance(self._credential, dict):
+                await self._credential["async"].close()

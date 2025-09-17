@@ -2,6 +2,7 @@
 
 from importlib import metadata
 from .document_loaders import AzureBlobStorageFileLoader, AzureBlobStorageContainerLoader
+from .blob_storage_loader import AzureBlobStorageLoader
 
 try:
     __version__ = metadata.version(__package__)
