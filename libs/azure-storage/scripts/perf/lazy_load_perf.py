@@ -146,6 +146,7 @@ def loader_without_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
+        prefix="perf-test-blob-1",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
     )
 
@@ -153,6 +154,7 @@ def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
+        prefix="perf-test-blob-1",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )
@@ -189,6 +191,7 @@ def test_community_loader_lazy_load() -> dict[str, Any]:
     loader = AzureBlobStorageContainerLoader(
         conn_str=CONNECTION_STRING,
         container=CONTAINER_NAME,
+        prefix="perf-test-blob-1",
     )
     
     start_time = time.time()
@@ -225,29 +228,6 @@ def test_community_loader_lazy_load() -> dict[str, Any]:
     }
 
 
-def print_summary(results: list[dict[str, Any]]) -> None:
-    """Print performance comparison summary."""
-    print("\n" + "=" * 80)
-    print("SYNCHRONOUS PERFORMANCE SUMMARY")
-    print("=" * 80)
-    
-    print(f"\n{'Loader':<40} {'Method':<15} {'Docs':<10} {'Time (s)':<12} {'Throughput':<15} {'Peak Mem':<12} {'Mem/Doc':<12}")
-    print("-" * 120)
-    
-    for result in results:
-        if result.get("skipped"):
-            continue
-        print(
-            f"{result['loader']:<40} "
-            f"{result['method']:<15} "
-            f"{result['doc_count']:<10} "
-            f"{result['elapsed_time']:<12.2f} "
-            f"{result['throughput']:<15.2f} "
-            f"{result['peak_memory_mb']:<12.2f} "
-            f"{result['memory_per_doc_kb']:<12.2f}"
-        )
-
-
 def main() -> None:
     """Run synchronous performance tests."""
     print("Azure Blob Storage Document Loader - SYNCHRONOUS Performance Test")
@@ -264,8 +244,8 @@ def main() -> None:
     try:
         # Test new loader - sync
         # print("Testing NEW AzureBlobStorageLoader - lazy_load() without loader factory")
-        # for i in range(3):
-        #     results.append(test_new_loader_lazy_load(use_loader_factory=False))
+        for i in range(3):
+            results.append(test_new_loader_lazy_load(use_loader_factory=False))
 
         # print("Testing NEW AzureBlobStorageLoader - lazy_load() with loader factory")
         # for i in range(3):
@@ -274,9 +254,6 @@ def main() -> None:
         # Test community loader - sync
         for i in range(3):
             results.append(test_community_loader_lazy_load())
-        
-        # Print summary
-        # print_summary(results)
         
     finally:
         # Cleanup (optional - comment out if you want to keep data for async test)
