@@ -22,6 +22,7 @@ except Exception as e:
 ACCOUNT_URL = os.getenv("AZURE_STORAGE_ACCOUNT_URL")
 CONTAINER_NAME = "perf-test-container"
 CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+SAS_CRED = AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN"))
 NUM_BLOBS = 10000
 BLOB_SIZE_KB = 4  # 4 KiB
 BLOB_PREFIX = "perf-test-blob-"
@@ -39,7 +40,7 @@ def setup_test_container() -> BlobServiceClient:
     
     print(f"Setting up test container '{CONTAINER_NAME}'...")
     blob_service_client = BlobServiceClient(
-        account_url=ACCOUNT_URL, credential=DefaultAzureCredential()
+        account_url=ACCOUNT_URL, credential=SAS_CRED
     )
     
     # Create container
