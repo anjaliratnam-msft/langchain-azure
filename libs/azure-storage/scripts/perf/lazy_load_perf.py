@@ -263,13 +263,13 @@ def main() -> None:
     
     try:
         # Test new loader - sync
-        print("Testing NEW AzureBlobStorageLoader - lazy_load() without loader factory")
-        for i in range(3):
-            results.append(test_new_loader_lazy_load(use_loader_factory=False))
+        # print("Testing NEW AzureBlobStorageLoader - lazy_load() without loader factory")
+        # for i in range(3):
+        #     results.append(test_new_loader_lazy_load(use_loader_factory=False))
 
-        print("Testing NEW AzureBlobStorageLoader - lazy_load() with loader factory")
-        for i in range(3):
-            results.append(test_new_loader_lazy_load(use_loader_factory=True))
+        # print("Testing NEW AzureBlobStorageLoader - lazy_load() with loader factory")
+        # for i in range(3):
+        #     results.append(test_new_loader_lazy_load(use_loader_factory=True))
         
         # Test community loader - sync
         for i in range(3):
