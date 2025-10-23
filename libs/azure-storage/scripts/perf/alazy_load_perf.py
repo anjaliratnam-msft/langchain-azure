@@ -6,6 +6,7 @@ import tracemalloc
 from typing import Any
 
 from azure.identity import DefaultAzureCredential
+from azure.core.credentials import AzureSasCredential
 from azure.storage.blob import BlobServiceClient
 
 from langchain_azure_storage.document_loaders import AzureBlobStorageLoader
@@ -144,12 +145,14 @@ def loader_without_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
+        credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
     )
 
 def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
+        credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )
 
