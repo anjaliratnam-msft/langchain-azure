@@ -93,6 +93,10 @@ def test_new_loader_lazy_load(use_loader_factory: bool = False) -> dict[str, Any
     print("Testing NEW AzureBlobStorageLoader - lazy_load()")
     print("=" * 80)
 
+    # Reset stats before test
+    if use_loader_factory:
+        AzureBlobStorageLoader.reset_stats()
+
     # Force garbage collection before test
     gc.collect()
     
@@ -122,9 +126,12 @@ def test_new_loader_lazy_load(use_loader_factory: bool = False) -> dict[str, Any
     tracemalloc.stop()
 
     elapsed = time.time() - start_time
+
+    # Print stats after test
+    if use_loader_factory:
+        AzureBlobStorageLoader.print_stats()
     
     print(f"\nCompleted:")
-    print("  Loader factory: UnstructuredFileLoader")
     print(f"  Documents loaded: {doc_count}")
     print(f"  Time elapsed: {elapsed:.2f} seconds")
     print(f"  Throughput: {doc_count / elapsed:.2f} docs/sec")
@@ -154,7 +161,7 @@ def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        prefix="perf-test-blob-1",
+        prefix="perf-test-blob-111",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )
@@ -191,7 +198,7 @@ def test_community_loader_lazy_load() -> dict[str, Any]:
     loader = AzureBlobStorageContainerLoader(
         conn_str=CONNECTION_STRING,
         container=CONTAINER_NAME,
-        prefix="perf-test-blob-1",
+        prefix="perf-test-blob-111",
     )
     
     start_time = time.time()
@@ -243,17 +250,15 @@ def main() -> None:
     
     try:
         # Test new loader - sync
-        # print("Testing NEW AzureBlobStorageLoader - lazy_load() without loader factory")
-        for i in range(3):
-            results.append(test_new_loader_lazy_load(use_loader_factory=False))
-
-        # print("Testing NEW AzureBlobStorageLoader - lazy_load() with loader factory")
         # for i in range(3):
-        #     results.append(test_new_loader_lazy_load(use_loader_factory=True))
+        #     results.append(test_new_loader_lazy_load(use_loader_factory=False))
+
+        # for i in range(3):
+        results.append(test_new_loader_lazy_load(use_loader_factory=True))
         
         # Test community loader - sync
-        for i in range(3):
-            results.append(test_community_loader_lazy_load())
+        # for i in range(3):
+        # results.append(test_community_loader_lazy_load())
         
     finally:
         # Cleanup (optional - comment out if you want to keep data for async test)
