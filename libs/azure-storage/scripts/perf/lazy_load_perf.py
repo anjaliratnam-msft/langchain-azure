@@ -128,8 +128,7 @@ def test_new_loader_lazy_load(use_loader_factory: bool = False) -> dict[str, Any
     elapsed = time.time() - start_time
 
     # Print stats after test
-    if use_loader_factory:
-        AzureBlobStorageLoader.print_stats()
+    AzureBlobStorageLoader.print_stats()
     
     print(f"\nCompleted:")
     print(f"  Documents loaded: {doc_count}")
@@ -153,7 +152,7 @@ def loader_without_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        prefix="perf-test-blob-1",
+        prefix="perf-test-blob-11",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
     )
 
@@ -161,7 +160,7 @@ def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        prefix="perf-test-blob-1",
+        prefix="perf-test-blob-11",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )

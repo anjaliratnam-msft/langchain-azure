@@ -50,6 +50,7 @@ class AzureBlobStorageLoader(BaseLoader):
     _MAX_CONCURRENCY = 10
 
     # Class variables for tracking stats
+    total_download_time = 0.0
     total_unstructured_time = 0.0
     total_blob_count = 0
 
@@ -58,6 +59,7 @@ class AzureBlobStorageLoader(BaseLoader):
     @classmethod
     def reset_stats(cls):
         """Reset cumulative statistics."""
+        cls.total_download_time = 0.0
         cls.total_unstructured_time = 0.0
         cls.total_blob_count = 0
     
@@ -65,9 +67,11 @@ class AzureBlobStorageLoader(BaseLoader):
     def print_stats(cls):
         """Print cumulative statistics."""
         print(f"\n[DEBUG NEW LOADER STATS] Total blobs processed: {cls.total_blob_count}")
+        print(f"[DEBUG NEW LOADER STATS] Total download time: {cls.total_download_time:.2f}s")
         print(f"[DEBUG NEW LOADER STATS] Total UnstructuredFileLoader time: {cls.total_unstructured_time:.2f}s")
         if cls.total_blob_count > 0:
-            print(f"[DEBUG NEW LOADER STATS] Avg time per blob: {cls.total_unstructured_time / cls.total_blob_count:.4f}s")
+            print(f"[DEBUG NEW LOADER STATS] Avg download time per blob: {cls.total_download_time / cls.total_blob_count:.4f}s")
+            print(f"[DEBUG NEW LOADER STATS] Avg UnstructuredFileLoader time per blob: {cls.total_unstructured_time / cls.total_blob_count:.4f}s")
 
     def __init__(
         self,
@@ -156,8 +160,13 @@ class AzureBlobStorageLoader(BaseLoader):
     def _lazy_load_documents_from_blob(
         self, blob_client: BlobClient
     ) -> Iterator[Document]:
+        download_start = time.time()
         blob_data = blob_client.download_blob(max_concurrency=self._MAX_CONCURRENCY)
         blob_content = blob_data.readall()
+        download_time = time.time() - download_start
+
+        AzureBlobStorageLoader.total_download_time += download_time
+        
         if self._loader_factory is None:
             yield self._get_default_document(blob_content, blob_client)
         else:
