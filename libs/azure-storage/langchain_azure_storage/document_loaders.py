@@ -184,7 +184,7 @@ class AzureBlobStorageLoader(BaseLoader):
                     doc_count += 1
                     yield doc
                 unstructured_time = time.time() - unstructured_start_time
-                print(f"[DEBUG] Time for UnstructuredFileLoader on blob '{blob_client.blob_name}': {unstructured_time:.4f}s")
+                # print(f"[DEBUG] Time for UnstructuredFileLoader on blob '{blob_client.blob_name}': {unstructured_time:.4f}s")
             
                 # Accumulate stats
                 AzureBlobStorageLoader.total_unstructured_time += unstructured_time
