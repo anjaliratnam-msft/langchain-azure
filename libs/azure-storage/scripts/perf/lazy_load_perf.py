@@ -20,11 +20,11 @@ except Exception as e:
 
 # Configuration
 ACCOUNT_URL = os.getenv("AZURE_STORAGE_ACCOUNT_URL")
-CONTAINER_NAME = "perf-test-container"
+CONTAINER_NAME = "perf-test-container-64"
 CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 SAS_CRED = AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN"))
 NUM_BLOBS = 10000
-BLOB_SIZE_KB = 4  # 4 KiB
+BLOB_SIZE_KB = 64  # 4 KiB
 BLOB_PREFIX = "perf-test-blob-"
 
 
@@ -245,8 +245,8 @@ def main() -> None:
     
     try:
         # Test new loader - sync
-        # for i in range(3):
-        #     results.append(test_new_loader_lazy_load(use_loader_factory=False))
+        for i in range(3):
+            results.append(test_new_loader_lazy_load(use_loader_factory=False))
 
         for i in range(3):
             results.append(test_new_loader_lazy_load(use_loader_factory=True))
