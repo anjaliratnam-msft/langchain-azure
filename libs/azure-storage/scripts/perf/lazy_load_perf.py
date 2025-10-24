@@ -129,9 +129,6 @@ def test_new_loader_lazy_load(use_loader_factory: bool = False) -> dict[str, Any
     tracemalloc.stop()
 
     elapsed = time.time() - start_time
-
-    # Print stats after test
-    AzureBlobStorageLoader.print_stats()
     
     print(f"\nCompleted:")
     print(f"  Documents loaded: {doc_count}")
