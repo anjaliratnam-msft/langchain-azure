@@ -152,7 +152,7 @@ def loader_without_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        prefix="perf-test-blob-111",
+        prefix="perf-test-blob-1",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
     )
 
@@ -160,7 +160,7 @@ def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        prefix="perf-test-blob-111",
+        prefix="perf-test-blob-1",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )
