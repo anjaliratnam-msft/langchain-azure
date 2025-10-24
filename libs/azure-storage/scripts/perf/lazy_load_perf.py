@@ -161,7 +161,7 @@ def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        prefix="perf-test-blob-111",
+        prefix="perf-test-blob-1",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )
@@ -251,7 +251,7 @@ def main() -> None:
     try:
         # Test new loader - sync
         # for i in range(3):
-        #     results.append(test_new_loader_lazy_load(use_loader_factory=False))
+        results.append(test_new_loader_lazy_load(use_loader_factory=False))
 
         # for i in range(3):
         results.append(test_new_loader_lazy_load(use_loader_factory=True))
