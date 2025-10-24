@@ -65,7 +65,10 @@ def setup_test_container() -> BlobServiceClient:
     for i in range(NUM_BLOBS):
         blob_name = f"{BLOB_PREFIX}{i}.txt"
         blob_client = container_client.get_blob_client(blob_name)
-        blob_client.upload_blob(test_data)
+        try:
+            blob_client.upload_blob(test_data)
+        except Exception:
+            pass  # Blob already exists, skip it
         
         if (i + 1) % 1000 == 0:
             print(f"  Uploaded {i + 1}/{NUM_BLOBS} blobs...")
