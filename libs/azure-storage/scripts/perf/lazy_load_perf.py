@@ -96,10 +96,6 @@ def test_new_loader_lazy_load(use_loader_factory: bool = False) -> dict[str, Any
     print("Testing NEW AzureBlobStorageLoader - lazy_load()")
     print("=" * 80)
 
-    # Reset stats before test
-    if use_loader_factory:
-        AzureBlobStorageLoader.reset_stats()
-
     # Force garbage collection before test
     gc.collect()
     
@@ -249,8 +245,8 @@ def main() -> None:
     
     try:
         # Test new loader - sync
-        for i in range(3):
-            results.append(test_new_loader_lazy_load(use_loader_factory=False))
+        # for i in range(3):
+        #     results.append(test_new_loader_lazy_load(use_loader_factory=False))
 
         for i in range(3):
             results.append(test_new_loader_lazy_load(use_loader_factory=True))
