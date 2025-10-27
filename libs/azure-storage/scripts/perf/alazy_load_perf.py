@@ -25,7 +25,7 @@ CONTAINER_NAME = "perf-test-container"
 CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 SAS_CRED = AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN"))
 NUM_BLOBS = 10000
-BLOB_SIZE_KB = 4  # 4 KiB
+BLOB_SIZE_KB = 4  # 64 KiB
 BLOB_PREFIX = "perf-test-blob-"
 
 
@@ -66,7 +66,10 @@ def setup_test_container() -> BlobServiceClient:
     for i in range(NUM_BLOBS):
         blob_name = f"{BLOB_PREFIX}{i}.txt"
         blob_client = container_client.get_blob_client(blob_name)
-        blob_client.upload_blob(test_data, overwrite=True)
+        try:
+            blob_client.upload_blob(test_data)
+        except Exception:
+            pass  # Blob already exists, skip it
         
         if (i + 1) % 1000 == 0:
             print(f"  Uploaded {i + 1}/{NUM_BLOBS} blobs...")
@@ -146,6 +149,7 @@ def loader_without_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
+        # prefix="perf-test-blob",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
     )
 
@@ -153,6 +157,7 @@ def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
+        # prefix="perf-test-blob",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )
@@ -170,8 +175,6 @@ async def test_community_loader_alazy_load() -> dict[str, Any]:
             "doc_count": 0,
             "elapsed_time": 0,
             "throughput": 0,
-            "peak_memory_mb": 0,
-            "memory_per_doc_kb": 0,
             "skipped": True,
         }
     
@@ -191,6 +194,7 @@ async def test_community_loader_alazy_load() -> dict[str, Any]:
     loader = AzureBlobStorageContainerLoader(
         conn_str=CONNECTION_STRING,
         container=CONTAINER_NAME,
+        # prefix="perf-test-blob-111",
     )
     
     start_time = time.time()
@@ -224,30 +228,6 @@ async def test_community_loader_alazy_load() -> dict[str, Any]:
     }
 
 
-def print_summary(results: list[dict[str, Any]]) -> None:
-    """Print performance comparison summary."""
-    print("\n" + "=" * 80)
-    print("ASYNCHRONOUS PERFORMANCE SUMMARY")
-    print("=" * 80)
-    
-    print(f"\n{'Loader':<40} {'Method':<15} {'Docs':<10} {'Time (s)':<12} {'Throughput':<15} {'Peak Mem (MB)':<15} {'Mem/Doc (KB)':<15}")
-    print("-" * 130)
-    
-    for result in results:
-        if result.get("skipped"):
-            continue
-        print(
-            f"{result['loader']:<40} "
-            f"{result['method']:<15} "
-            f"{result['doc_count']:<10} "
-            f"{result['elapsed_time']:<12.2f} "
-            f"{result['throughput']:<15.2f} "
-            f"{result['peak_memory_mb']:<15.2f} "
-            f"{result['memory_per_doc_kb']:<15.2f}"
-        )
-    
-
-
 async def main() -> None:
     """Run asynchronous performance tests."""
     print("Azure Blob Storage Document Loader - ASYNCHRONOUS Performance Test")
@@ -263,11 +243,9 @@ async def main() -> None:
     
     try:
         # Test new loader - async
-        print("Testing NEW AzureBlobStorageLoader - alazy_load() without loader factory")
         for i in range(3):
             results.append(await test_new_loader_alazy_load(use_loader_factory=False))
 
-        print("Testing NEW AzureBlobStorageLoader - alazy_load() with loader factory")
         for i in range(3):
             results.append(await test_new_loader_alazy_load(use_loader_factory=True))
         
@@ -275,14 +253,11 @@ async def main() -> None:
         for i in range(3):
             results.append(await test_community_loader_alazy_load())
         
-        # Print summary
-        # print_summary(results)
-        
     finally:
-        # Cleanup
+        # Cleanup (optional - comment out if you want to keep data for testing)
         # cleanup_test_container(blob_service_client)
-        print(f"Run cleanup manually or run the async test script to clean up.")
-
+        print(f"\nNote: Test container '{CONTAINER_NAME}' was kept for testing.")
+        print(f"Run cleanup manually if needed.")
 
 
 if __name__ == "__main__":
