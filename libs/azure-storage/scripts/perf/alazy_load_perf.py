@@ -21,7 +21,7 @@ except Exception as e:
 
 # Configuration
 ACCOUNT_URL = os.getenv("AZURE_STORAGE_ACCOUNT_URL")
-CONTAINER_NAME = "perf-test-container-4"
+CONTAINER_NAME = "perf-test-container"
 CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 SAS_CRED = AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN"))
 NUM_BLOBS = 10000
