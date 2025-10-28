@@ -128,25 +128,25 @@ class AzureBlobStorageLoader(BaseLoader):
             blob_client = container_client.get_blob_client(blob_name)
             yield from self._lazy_load_documents_from_blob(blob_client)
 
-    # async def alazy_load(self) -> AsyncIterator[Document]:
-    #     """Asynchronously lazily loads documents from Azure Blob Storage.
+    async def alazy_load(self) -> AsyncIterator[Document]:
+        """Asynchronously lazily loads documents from Azure Blob Storage.
 
-    #     Yields:
-    #         The `Document` objects.
-    #     """
-    #     async with self._get_async_credential(self._provided_credential) as credential:
-    #         async_container_client = AsyncContainerClient(
-    #             **self._get_client_kwargs(credential)
-    #         )
-    #         async with async_container_client:
-    #             async for blob_name in self._ayield_blob_names(async_container_client):
-    #                 async_blob_client = async_container_client.get_blob_client(
-    #                     blob_name
-    #                 )
-    #                 async for doc in self._alazy_load_documents_from_blob(
-    #                     async_blob_client
-    #                 ):
-    #                     yield doc
+        Yields:
+            The `Document` objects.
+        """
+        async with self._get_async_credential(self._provided_credential) as credential:
+            async_container_client = AsyncContainerClient(
+                **self._get_client_kwargs(credential)
+            )
+            async with async_container_client:
+                async for blob_name in self._ayield_blob_names(async_container_client):
+                    async_blob_client = async_container_client.get_blob_client(
+                        blob_name
+                    )
+                    async for doc in self._alazy_load_documents_from_blob(
+                        async_blob_client
+                    ):
+                        yield doc
 
     def _get_client_kwargs(self, credential: _SDK_CREDENTIAL_TYPE = None) -> dict:
         return {
