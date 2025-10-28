@@ -164,7 +164,7 @@ def loader_with_factory() -> AzureBlobStorageLoader:
 
 
 
-async def test_new_loader_alazy_load_gather(use_loader_factory: bool = False, batch_size: int = 100) -> dict[str, Any]:
+async def test_new_loader_alazy_load_gather(use_loader_factory: bool = False, batch_size: int = 1000) -> dict[str, Any]:
     """Test the new AzureBlobStorageLoader with alazy_load using asyncio.gather on batches."""
     print("\n" + "=" * 80)
     print(f"Testing NEW AzureBlobStorageLoader - alazy_load() with asyncio.gather (batch_size={batch_size})")
@@ -310,81 +310,49 @@ async def test_community_loader_alazy_load() -> dict[str, Any]:
     }
 
 
-async def test_community_loader_alazy_load_gather(batch_size: int = 100) -> dict[str, Any]:
-    """Test the legacy AzureBlobStorageContainerLoader with aload using asyncio.gather on batches."""
+async def test_community_loader_alazy_load_gather() -> dict[str, Any]:
+    """Test community loader using digit-based batching."""
     if not CONNECTION_STRING:
-        print("\n" + "=" * 80)
-        print("Skipping AzureBlobStorageContainerLoader - CONNECTION_STRING not set")
-        print("=" * 80)
-        return {
-            "loader": "AzureBlobStorageContainerLoader",
-            "method": "aload_gather",
-            "doc_count": 0,
-            "elapsed_time": 0,
-            "throughput": 0,
-            "skipped": True,
-        }
+        return {"loader": "AzureBlobStorageContainerLoader", "method": "aload_gather_digit", "skipped": True, **default_values}
     
     from langchain_community.document_loaders import AzureBlobStorageContainerLoader
     
     print("\n" + "=" * 80)
-    print(f"Testing LEGACY AzureBlobStorageContainerLoader - aload() with asyncio.gather (batch_size={batch_size})")
+    print("Testing LEGACY AzureBlobStorageContainerLoader - aload() with digit batching (~1000 per batch)")
     print("=" * 80)
 
-    # Force garbage collection before test
     gc.collect()
-    
-    # Start memory tracking
     tracemalloc.start()
     
-    async def process_batch(batch_start: int, batch_end: int) -> int:
-        """Process one batch of blobs by creating a loader with specific prefix range."""
-        # Create prefix patterns for this batch range
-        batch_prefixes = [f"{BLOB_PREFIX}{i}.txt" for i in range(batch_start, min(batch_end, NUM_BLOBS))]
+    async def process_digit_batch(digit: int) -> int:
+        """Process blobs starting with a specific digit."""
+        prefix = f"{BLOB_PREFIX}{digit}"
         
-        # Create individual loaders for each blob in the batch and run them concurrently
-        batch_tasks = []
-        for prefix in batch_prefixes:
-            loader = AzureBlobStorageContainerLoader(
-                conn_str=CONNECTION_STRING,
-                container=CONTAINER_NAME,
-                prefix=prefix,  # Exact match for single blob
-            )
-            batch_tasks.append(loader.aload())
+        loader = AzureBlobStorageContainerLoader(
+            conn_str=CONNECTION_STRING,
+            container=CONTAINER_NAME,
+            prefix=prefix,
+        )
         
-        # Load all blobs in this batch concurrently
-        batch_results = await asyncio.gather(*batch_tasks)
-        
-        # Count total documents from this batch
-        total_docs = sum(len(docs) for docs in batch_results)
-        return total_docs
+        docs = await loader.aload()
+        return len(docs)
     
     start_time = time.time()
-    peak_memory = 0
     
-    # Create batches
-    total_batches = (NUM_BLOBS + batch_size - 1) // batch_size  # Ceiling division
-    tasks = []
+    # Create 10 digit-based batches (0-9)
+    tasks = [process_digit_batch(digit) for digit in range(10)]
     
-    for batch_idx in range(total_batches):
-        batch_start = batch_idx * batch_size
-        batch_end = (batch_idx + 1) * batch_size
-        tasks.append(process_batch(batch_start, batch_end))
-    
-    # Run all batches concurrently
+    # Run all digit batches concurrently
     batch_counts = await asyncio.gather(*tasks)
     doc_count = sum(batch_counts)
     
     elapsed = time.time() - start_time
-    
     current_memory, peak_memory = tracemalloc.get_traced_memory()
-    
-    # Stop memory tracking
     tracemalloc.stop()
     
     print(f"\nCompleted:")
     print(f"  Documents loaded: {doc_count}")
-    print(f"  Batches processed: {len(tasks)}")
+    print(f"  Digit batches processed: 10")
     print(f"  Time elapsed: {elapsed:.2f} seconds")
     print(f"  Throughput: {doc_count / elapsed:.2f} docs/sec")
     print(f"  Peak memory: {peak_memory / 1024 / 1024:.2f} MB")
@@ -392,16 +360,15 @@ async def test_community_loader_alazy_load_gather(batch_size: int = 100) -> dict
     
     return {
         "loader": "AzureBlobStorageContainerLoader",
-        "method": "aload_gather",
-        "batch_size": batch_size,
-        "batch_count": len(tasks),
+        "method": "aload_gather_digit",
+        "batch_size": "~1000",
+        "batch_count": 10,
         "doc_count": doc_count,
         "elapsed_time": elapsed,
         "throughput": doc_count / elapsed,
         "peak_memory_mb": peak_memory / 1024 / 1024,
         "memory_per_doc_kb": peak_memory / doc_count / 1024,
     }
-
 
 
 
@@ -432,13 +399,13 @@ async def main() -> None:
 
 
         for i in range(3):
-            results.append(await test_new_loader_alazy_load_gather(use_loader_factory=False, batch_size=100))
+            results.append(await test_new_loader_alazy_load_gather(use_loader_factory=False, batch_size=1000))
 
         for i in range(3):
-            results.append(await test_new_loader_alazy_load_gather(use_loader_factory=True, batch_size=100))
+            results.append(await test_new_loader_alazy_load_gather(use_loader_factory=True, batch_size=1000))
 
         for i in range(3):
-            results.append(await test_community_loader_alazy_load_gather(batch_size=100))
+            results.append(await test_community_loader_alazy_load_gather())
         
     finally:
         # Cleanup (optional - comment out if you want to keep data for testing)
