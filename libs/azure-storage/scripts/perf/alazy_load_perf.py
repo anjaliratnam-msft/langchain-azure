@@ -5,7 +5,6 @@ import time
 import tracemalloc
 from typing import Any
 
-from azure.identity import DefaultAzureCredential
 from azure.core.credentials import AzureSasCredential
 from azure.storage.blob import BlobServiceClient
 
@@ -25,12 +24,11 @@ CONTAINER_NAME = "perf-test-container-64"
 CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
 SAS_CRED = AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN"))
 NUM_BLOBS = 10000
-BLOB_SIZE_KB = 64  # 64 KiB
+BLOB_SIZE_KB = 64
 BLOB_PREFIX = "perf-test-blob-"
 
 
 def create_test_data() -> bytes:
-    """Create 4KiB of test data."""
     return b"0" * (BLOB_SIZE_KB * 1024)
 
 
@@ -91,16 +89,13 @@ def cleanup_test_container(blob_service_client: BlobServiceClient) -> None:
         print(f"Error deleting container: {e}")
 
 
-async def test_new_loader_alazy_load(use_loader_factory: bool = False) -> dict[str, Any]:
+async def test_new_loader_alazy_load(use_loader_factory: bool = False) -> None:
     """Test the new AzureBlobStorageLoader with alazy_load."""
     print("\n" + "=" * 80)
     print("Testing NEW AzureBlobStorageLoader - alazy_load()")
     print("=" * 80)
 
-    # Force garbage collection before test
     gc.collect()
-    
-    # Start memory tracking
     tracemalloc.start()
     
     if use_loader_factory:
@@ -122,9 +117,7 @@ async def test_new_loader_alazy_load(use_loader_factory: bool = False) -> dict[s
     current_memory, peak = tracemalloc.get_traced_memory()
     peak_memory = max(peak_memory, peak)
     
-    # Stop memory tracking
     tracemalloc.stop()
-
     elapsed = time.time() - start_time
     
     print(f"\nCompleted:")
@@ -134,22 +127,11 @@ async def test_new_loader_alazy_load(use_loader_factory: bool = False) -> dict[s
     print(f"  Peak memory: {peak_memory / 1024 / 1024:.2f} MB")
     print(f"  Memory per doc: {peak_memory / doc_count / 1024:.2f} KB")
     
-    return {
-        "loader": "AzureBlobStorageLoader",
-        "method": "alazy_load",
-        "doc_count": doc_count,
-        "elapsed_time": elapsed,
-        "throughput": doc_count / elapsed,
-        "peak_memory_mb": peak_memory / 1024 / 1024,
-        "memory_per_doc_kb": peak_memory / doc_count / 1024,
-    }
-
 
 def loader_without_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        # prefix="perf-test-blob",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
     )
 
@@ -157,23 +139,19 @@ def loader_with_factory() -> AzureBlobStorageLoader:
     return AzureBlobStorageLoader(
         account_url=ACCOUNT_URL,
         container_name=CONTAINER_NAME,
-        # prefix="perf-test-blob",
         credential=AzureSasCredential(os.getenv("AZURE_STORAGE_SAS_TOKEN")),
         loader_factory=UnstructuredFileLoader,
     )
 
 
 
-async def test_new_loader_alazy_load_gather(use_loader_factory: bool = False, batch_size: int = 1000) -> dict[str, Any]:
+async def test_new_loader_alazy_load_gather(use_loader_factory: bool = False, batch_size: int = 1000) -> None:
     """Test the new AzureBlobStorageLoader with alazy_load using asyncio.gather on batches."""
     print("\n" + "=" * 80)
     print(f"Testing NEW AzureBlobStorageLoader - alazy_load() with asyncio.gather (batch_size={batch_size})")
     print("=" * 80)
 
-    # Force garbage collection before test
     gc.collect()
-    
-    # Start memory tracking
     tracemalloc.start()
     
     # Generate all blob names
@@ -208,10 +186,8 @@ async def test_new_loader_alazy_load_gather(use_loader_factory: bool = False, ba
     start_time = time.time()
     peak_memory = 0
     
-    # Create tasks for all batches
     tasks = [process_batch(batch) for batch in batches]
     
-    # Run all batches concurrently
     batch_counts = await asyncio.gather(*tasks)
     doc_count = sum(batch_counts)
     
@@ -219,8 +195,6 @@ async def test_new_loader_alazy_load_gather(use_loader_factory: bool = False, ba
     
     current_memory, peak = tracemalloc.get_traced_memory()
     peak_memory = max(peak_memory, peak)
-    
-    # Stop memory tracking
     tracemalloc.stop()
     
     print(f"\nCompleted:")
@@ -230,22 +204,9 @@ async def test_new_loader_alazy_load_gather(use_loader_factory: bool = False, ba
     print(f"  Throughput: {doc_count / elapsed:.2f} docs/sec")
     print(f"  Peak memory: {peak_memory / 1024 / 1024:.2f} MB")
     print(f"  Memory per doc: {peak_memory / doc_count / 1024:.2f} KB")
-    
-    return {
-        "loader": "AzureBlobStorageLoader",
-        "method": "alazy_load_gather",
-        "batch_size": batch_size,
-        "batch_count": len(batches),
-        "doc_count": doc_count,
-        "elapsed_time": elapsed,
-        "throughput": doc_count / elapsed,
-        "peak_memory_mb": peak_memory / 1024 / 1024,
-        "memory_per_doc_kb": peak_memory / doc_count / 1024,
-    }
 
 
-
-async def test_community_loader_alazy_load() -> dict[str, Any]:
+async def test_community_loader_alazy_load() -> None:
     """Test the legacy AzureBlobStorageContainerLoader with aload."""
     if not CONNECTION_STRING:
         print("\n" + "=" * 80)
@@ -267,29 +228,22 @@ async def test_community_loader_alazy_load() -> dict[str, Any]:
     print("Testing LEGACY AzureBlobStorageContainerLoader - aload()")
     print("=" * 80)
 
-    # Force garbage collection before test
     gc.collect()
-    
-    # Start memory tracking
     tracemalloc.start()
     
     loader = AzureBlobStorageContainerLoader(
         conn_str=CONNECTION_STRING,
         container=CONTAINER_NAME,
-        # prefix="perf-test-blob-111",
     )
     
     start_time = time.time()
     
-    # Community loader loads all at once asynchronously
     docs = await loader.aload()
     doc_count = len(docs)
     
     elapsed = time.time() - start_time
     
     current_memory, peak_memory = tracemalloc.get_traced_memory()
-    
-    # Stop memory tracking
     tracemalloc.stop()
     
     print(f"\nCompleted:")
@@ -298,23 +252,10 @@ async def test_community_loader_alazy_load() -> dict[str, Any]:
     print(f"  Throughput: {doc_count / elapsed:.2f} docs/sec")
     print(f"  Peak memory: {peak_memory / 1024 / 1024:.2f} MB")
     print(f"  Memory per doc: {peak_memory / doc_count / 1024:.2f} KB")
-    
-    return {
-        "loader": "AzureBlobStorageContainerLoader",
-        "method": "aload",
-        "doc_count": doc_count,
-        "elapsed_time": elapsed,
-        "throughput": doc_count / elapsed,
-        "peak_memory_mb": peak_memory / 1024 / 1024,
-        "memory_per_doc_kb": peak_memory / doc_count / 1024,
-    }
 
 
-async def test_community_loader_alazy_load_gather() -> dict[str, Any]:
+async def test_community_loader_alazy_load_gather() -> None:
     """Test community loader using digit-based batching."""
-    if not CONNECTION_STRING:
-        return {"loader": "AzureBlobStorageContainerLoader", "method": "aload_gather_digit", "skipped": True, **default_values}
-    
     from langchain_community.document_loaders import AzureBlobStorageContainerLoader
     
     print("\n" + "=" * 80)
@@ -342,7 +283,6 @@ async def test_community_loader_alazy_load_gather() -> dict[str, Any]:
     # Create 10 digit-based batches (0-9)
     tasks = [process_digit_batch(digit) for digit in range(10)]
     
-    # Run all digit batches concurrently
     batch_counts = await asyncio.gather(*tasks)
     doc_count = sum(batch_counts)
     
@@ -357,19 +297,6 @@ async def test_community_loader_alazy_load_gather() -> dict[str, Any]:
     print(f"  Throughput: {doc_count / elapsed:.2f} docs/sec")
     print(f"  Peak memory: {peak_memory / 1024 / 1024:.2f} MB")
     print(f"  Memory per doc: {peak_memory / doc_count / 1024:.2f} KB")
-    
-    return {
-        "loader": "AzureBlobStorageContainerLoader",
-        "method": "aload_gather_digit",
-        "batch_size": "~1000",
-        "batch_count": 10,
-        "doc_count": doc_count,
-        "elapsed_time": elapsed,
-        "throughput": doc_count / elapsed,
-        "peak_memory_mb": peak_memory / 1024 / 1024,
-        "memory_per_doc_kb": peak_memory / doc_count / 1024,
-    }
-
 
 
 async def main() -> None:
@@ -380,38 +307,32 @@ async def main() -> None:
     print(f"  Number of blobs: {NUM_BLOBS}")
     print(f"  Blob size: {BLOB_SIZE_KB} KiB")
     
-    # Setup (synchronous)
-    blob_service_client = setup_test_container()
-    
-    results = []
-    
+    blob_service_client = setup_test_container() 
     try:
-        # # Test new loader - async
-        # for i in range(3):
-        #     results.append(await test_new_loader_alazy_load(use_loader_factory=False))
+        # Test new loader - async
+        for i in range(3):
+            await test_new_loader_alazy_load(use_loader_factory=False)
 
-        # for i in range(3):
-        #     results.append(await test_new_loader_alazy_load(use_loader_factory=True))
+        for i in range(3):
+            await test_new_loader_alazy_load(use_loader_factory=True)
         
-        # # Test community loader - async
+        # Test community loader - async
+        for i in range(3):
+            await test_community_loader_alazy_load()
+
+
         # for i in range(3):
-        #     results.append(await test_community_loader_alazy_load())
+        #     await test_new_loader_alazy_load_gather(use_loader_factory=False, batch_size=1000)
 
+        # for i in range(3):
+        #     await test_new_loader_alazy_load_gather(use_loader_factory=True, batch_size=1000)
 
-        for i in range(3):
-            results.append(await test_new_loader_alazy_load_gather(use_loader_factory=False, batch_size=1000))
-
-        for i in range(3):
-            results.append(await test_new_loader_alazy_load_gather(use_loader_factory=True, batch_size=1000))
-
-        for i in range(3):
-            results.append(await test_community_loader_alazy_load_gather())
+        # for i in range(3):
+        #     await test_community_loader_alazy_load_gather()
         
     finally:
         # Cleanup (optional - comment out if you want to keep data for testing)
-        # cleanup_test_container(blob_service_client)
         print(f"\nNote: Test container '{CONTAINER_NAME}' was kept for testing.")
-        print(f"Run cleanup manually if needed.")
 
 
 if __name__ == "__main__":
